@@ -1,2 +1,278 @@
 # ChangeNarator
-ChangeNarrator An agent that watches code changes and automatically generates human-readable changelogs, published as a newsletter or release note.
+
+ChangeNarrator - An agent that watches code changes and automatically generates human-readable changelogs, published as a newsletter or release note.
+
+## Features
+
+- 🔍 **PR Metadata Fetcher**: Fetch complete PR context from GitHub including:
+  - Base and head SHA
+  - PR title and number
+  - All commit messages
+  - Changed files with patches
+  - Addition/deletion statistics
+
+## Prerequisites
+
+- [Bun](https://bun.sh) runtime installed
+- GitHub Personal Access Token with appropriate permissions
+
+## Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd ChangeNarator
+   ```
+
+2. **Install dependencies**
+   ```bash
+   bun install
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` and add your GitHub token:
+   ```env
+   GITHUB_TOKEN=your_github_token_here
+   ```
+
+   **Creating a GitHub Token:**
+   - Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
+   - Click "Generate new token (classic)"
+   - Select scopes:
+     - `repo` (for private repositories)
+     - `public_repo` (for public repositories only)
+   - Copy the generated token to your `.env` file
+
+## Usage
+
+### CLI Usage
+
+Fetch PR metadata from the command line:
+
+```bash
+bun run start <owner> <repo> <pr_number>
+```
+
+**Example:**
+```bash
+bun run start facebook react 12345
+```
+
+This will output:
+- Complete PR context as JSON
+- Summary with key statistics
+- All file changes with patches
+
+### Programmatic Usage
+
+Import and use the `fetchPRContext` function in your code:
+
+```typescript
+import { fetchPRContext } from './src/index';
+
+const prContext = await fetchPRContext('facebook', 'react', 12345);
+
+console.log(prContext);
+// {
+//   repo: "facebook/react",
+//   pr_number: 12345,
+//   pr_title: "Add new feature",
+//   base_sha: "abc123...",
+//   head_sha: "def456...",
+//   commit_messages: ["commit 1", "commit 2"],
+//   files_changed: [...],
+//   stats: { total_files: 3, total_commits: 2 }
+// }
+```
+
+## Data Structure
+
+### PRContext Interface
+
+```typescript
+interface PRContext {
+  repo: string;                    // "owner/repo"
+  pr_number: number;               // PR number
+  pr_title: string;                // PR title
+  base_sha: string;                // Base commit SHA
+  head_sha: string;                // Head commit SHA
+  commit_messages: string[];       // All commit messages
+  files_changed: FileChange[];     // Array of changed files
+  stats: {
+    total_files: number;           // Total files changed
+    total_commits: number;         // Total commits in PR
+  };
+}
+```
+
+### FileChange Interface
+
+```typescript
+interface FileChange {
+  filename: string;                           // File path
+  status: 'added' | 'modified' | 'removed' | 'renamed';
+  additions: number;                          // Lines added
+  deletions: number;                          // Lines deleted
+  patch: string | null;                       // Git diff patch
+}
+```
+
+## Development
+
+### Available Scripts
+
+- `bun run dev` - Run in watch mode (auto-reload on changes)
+- `bun run start` - Run the application
+## Testing
+
+The project includes a comprehensive test suite using Bun's built-in test runner.
+
+### Running Tests
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode (auto-rerun on file changes)
+bun test:watch
+
+# Run tests with coverage report
+bun test:coverage
+```
+
+### Test Structure
+
+```
+src/
+├── github-client.test.ts    # Unit tests for GitHub API client
+├── pr-fetcher.test.ts       # Unit tests for PR fetching logic
+└── index.test.ts            # Integration tests for main function
+```
+
+### Test Coverage
+
+The test suite includes:
+
+- ✅ **GitHubClient Tests** (11 tests)
+  - Constructor validation
+  - PR metadata fetching
+  - Commit message retrieval
+  - Compare diff fetching
+  - Error handling for API failures
+
+- ✅ **PRFetcher Tests** (10 tests)
+  - Data shaping and transformation
+  - Input validation
+  - File status mapping
+  - Error propagation
+  - Edge cases (empty PRs, etc.)
+
+- ✅ **Integration Tests** (5 tests)
+  - Environment variable handling
+  - CLI argument parsing
+  - End-to-end flow validation
+
+### Test Results
+
+```
+26 pass
+0 fail
+47 expect() calls
+```
+
+### Writing New Tests
+
+To add new tests, create a file with `.test.ts` extension:
+
+```typescript
+import { describe, test, expect } from 'bun:test';
+
+describe('My Feature', () => {
+  test('should work correctly', () => {
+    expect(true).toBe(true);
+  });
+});
+```
+
+Bun will automatically discover and run all `*.test.ts` files.
+
+- `bun run build` - Build for production
+- `bun run typecheck` - Check TypeScript types
+
+### Project Structure
+
+```
+src/
+├── index.ts           # CLI entry point and main export
+├── types.ts           # TypeScript type definitions
+├── github-client.ts   # GitHub API wrapper using Octokit
+├── pr-fetcher.ts      # Main PR fetching and data shaping logic
+```
+
+## Error Handling
+
+The script handles various error scenarios:
+
+- ❌ Missing GitHub token
+- ❌ Invalid repository or PR number
+- ❌ PR not found (404)
+- ❌ API rate limits
+- ❌ Network errors
+- ❌ Invalid input parameters
+
+## Examples
+
+### Fetch a PR from a public repository
+
+```bash
+bun run start vercel next.js 50000
+```
+
+### Fetch a PR from a private repository
+
+Ensure your `GITHUB_TOKEN` has `repo` scope:
+
+```bash
+bun run start your-org your-private-repo 123
+```
+
+### Use in your own script
+
+```typescript
+import { fetchPRContext } from './src/index';
+import type { PRContext } from './src/types';
+
+async function analyzePR() {
+  try {
+    const context: PRContext = await fetchPRContext('owner', 'repo', 123);
+    
+    // Process the PR context
+    console.log(`Analyzing ${context.stats.total_files} files...`);
+    
+    for (const file of context.files_changed) {
+      console.log(`${file.status}: ${file.filename}`);
+      console.log(`  +${file.additions} -${file.deletions}`);
+    }
+  } catch (error) {
+    console.error('Failed to fetch PR:', error);
+  }
+}
+
+analyzePR();
+```
+
+## License
+
+See [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+Made with ❤️ by Bob
