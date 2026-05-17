@@ -1,6 +1,6 @@
 {
   "name": "changenarrator",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "An AI-powered tool that watches code changes and automatically generates human-readable changelogs from GitHub PRs",
   "keywords": [
     "changelog",
