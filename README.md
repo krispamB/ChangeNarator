@@ -53,17 +53,31 @@ If you want to contribute or run from source:
 
 ## Quick Start
 
-After installation, initialize the configuration:
+1. **Install ChangeNarator:**
+   ```bash
+   npm install -g changenarrator
+   ```
 
-```bash
-changenarator init
-```
+2. **Initialize configuration:**
+   ```bash
+   changenarator init
+   ```
+   
+   This interactive wizard will guide you through setting up:
+   - GitHub Personal Access Token
+   - IBM WatsonX API credentials
+   - Notion integration
+   - Local repository directory
 
-This interactive wizard will guide you through setting up:
-- GitHub Personal Access Token
-- IBM WatsonX API credentials
-- Notion integration
-- Local repository directory
+3. **Analyze a PR:**
+   ```bash
+   changenarator <owner> <repo> <pr_number> <local_repo_path>
+   ```
+   
+   Example:
+   ```bash
+   changenarator facebook react 12345 ~/repos/react
+   ```
 
 ## Setup
 
@@ -123,7 +137,7 @@ This interactive wizard will guide you through setting up:
 changenarator init
 ```
 
-**Run Analysis:**
+**Run Analysis (Default Command):**
 ```bash
 changenarator <owner> <repo> <pr_number> <local_repo_path>
 ```
@@ -131,6 +145,11 @@ changenarator <owner> <repo> <pr_number> <local_repo_path>
 **Example:**
 ```bash
 changenarator facebook react 12345 ~/repos/react
+```
+
+**Alternative (Explicit Command):**
+```bash
+changenarator analyze facebook react 12345 ~/repos/react
 ```
 
 This will:
@@ -142,11 +161,15 @@ This will:
 
 **Get Help:**
 ```bash
+changenarator help
+# or
 changenarator --help
 ```
 
 **Check Version:**
 ```bash
+changenarator version
+# or
 changenarator --version
 ```
 
@@ -309,18 +332,24 @@ The script handles various error scenarios:
 
 ## Examples
 
-### Fetch a PR from a public repository
+### Analyze a PR from a public repository
 
 ```bash
-bun run start vercel next.js 50000
+changenarator vercel next.js 50000 ~/repos/nextjs
 ```
 
-### Fetch a PR from a private repository
+### Analyze a PR from a private repository
 
-Ensure your `GITHUB_TOKEN` has `repo` scope:
+Ensure your GitHub token (configured via `changenarator init`) has `repo` scope:
 
 ```bash
-bun run start your-org your-private-repo 123
+changenarator your-org your-private-repo 123 ~/repos/your-private-repo
+```
+
+### Using npm scripts (for development)
+
+```bash
+bun run start vercel next.js 50000 ~/repos/nextjs
 ```
 
 ### Use in your own script
