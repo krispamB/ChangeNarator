@@ -1,17 +1,15 @@
 import type { BobAnalysisResult, ChangelogAudiences } from './types'
+import type { Config } from './cli/config'
 
-const WATSONX_URL = process.env.WATSONX_URL!;
-const WATSONX_API_KEY = process.env.WATSONX_API_KEY!;
-const WATSONX_PROJECT_ID = process.env.WATSONX_PROJECT_ID!;
 const MODEL_ID = 'ibm/granite-4-h-small';
 
-async function getIAMToken(): Promise<string> {
+async function getIAMToken(apiKey: string): Promise<string> {
     const res = await fetch('https://iam.cloud.ibm.com/identity/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             grant_type: 'urn:ibm:params:oauth:grant-type:apikey',
-            apikey: WATSONX_API_KEY,
+            apikey: apiKey,
         }),
     });
 
@@ -20,9 +18,15 @@ async function getIAMToken(): Promise<string> {
     return data.access_token;
 }
 
-async function generate(token: string, systemPrompt: string, userPrompt: string): Promise<string> {
+async function generate(
+    token: string,
+    systemPrompt: string,
+    userPrompt: string,
+    watsonxUrl: string,
+    projectId: string
+): Promise<string> {
     const res = await fetch(
-        `${WATSONX_URL}/ml/v1/text/chat?version=2024-05-31`,
+        `${watsonxUrl}/ml/v1/text/chat?version=2024-05-31`,
         {
             method: 'POST',
             headers: {
@@ -32,7 +36,7 @@ async function generate(token: string, systemPrompt: string, userPrompt: string)
             },
             body: JSON.stringify({
                 model_id: MODEL_ID,
-                project_id: WATSONX_PROJECT_ID,
+                project_id: projectId,
                 messages: [
                     {
                         role: 'system',
@@ -101,8 +105,8 @@ Write the changelog section now. Return only the text, no headings, no labels.`;
     };
 }
 
-export async function generateChangelog(analysis: BobAnalysisResult): Promise<ChangelogAudiences> {
-    const token = await getIAMToken();
+export async function generateChangelog(analysis: BobAnalysisResult, config: Config): Promise<ChangelogAudiences> {
+    const token = await getIAMToken(config.watsonx.apiKey);
 
     // Build prompts for all three audiences
     const devsPrompt = buildPrompt(analysis, 'devs');
@@ -111,9 +115,9 @@ export async function generateChangelog(analysis: BobAnalysisResult): Promise<Ch
 
     // run all 3 generations in parallel
     const [devs, pms, users] = await Promise.all([
-        generate(token, devsPrompt.system, devsPrompt.user),
-        generate(token, pmsPrompt.system, pmsPrompt.user),
-        generate(token, usersPrompt.system, usersPrompt.user),
+        generate(token, devsPrompt.system, devsPrompt.user, config.watsonx.url, config.watsonx.projectId),
+        generate(token, pmsPrompt.system, pmsPrompt.user, config.watsonx.url, config.watsonx.projectId),
+        generate(token, usersPrompt.system, usersPrompt.user, config.watsonx.url, config.watsonx.projectId),
     ]);
 
     return { devs, pms, users };

@@ -1,0 +1,15 @@
+{
+  "github": {
+    "token": "ghp_your_github_token_here"
+  },
+  "watsonx": {
+    "apiKey": "your_watsonx_api_key_here",
+    "projectId": "your_watsonx_project_id_here",
+    "url": "https://us-south.ml.cloud.ibm.com"
+  },
+  "notion": {
+    "token": "secret_your_notion_token_here",
+    "parentPageId": "your_notion_page_id_here"
+  },
+  "localReposDir": "~/repos"
+}

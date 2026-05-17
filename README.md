@@ -29,43 +29,88 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
    bun install
    ```
 
-3. **Configure environment variables**
+3. **Configure ChangeNarator**
+   
+   Run the interactive setup wizard:
    ```bash
-   cp .env.example .env
+   bun run cli init
    ```
    
-   Edit `.env` and add your GitHub token:
-   ```env
-   GITHUB_TOKEN=your_github_token_here
+   This will prompt you for:
+   - **GitHub Personal Access Token** - For fetching PR data
+   - **IBM WatsonX API Key** - For AI-powered changelog generation
+   - **WatsonX Project ID** - Your WatsonX project identifier
+   - **WatsonX Region URL** - Default: `https://us-south.ml.cloud.ibm.com`
+   - **Notion Integration Token** - For publishing changelogs
+   - **Notion Parent Page ID** - Where changelogs will be published
+   - **Local repos directory** - Where repositories will be cloned (default: `~/repos`)
+
+   Configuration is saved to `config.json` (automatically added to `.gitignore`).
+
+   **Creating Required Tokens:**
+   
+   - **GitHub Token**: [GitHub Settings > Tokens](https://github.com/settings/tokens)
+     - Select scopes: `repo` (private repos) or `public_repo` (public only)
+   
+   - **WatsonX Credentials**: [IBM Cloud](https://cloud.ibm.com/)
+     - Create a WatsonX.ai instance
+     - Get your API key and project ID
+   
+   - **Notion Token**: [Notion Integrations](https://www.notion.so/my-integrations)
+     - Create a new integration
+     - Share a page with your integration to get the page ID
+
+   **Alternative: Manual Configuration**
+   
+   You can also manually create `config.json` based on `config.example.json`:
+   ```bash
+   cp config.example.json config.json
+   # Edit config.json with your credentials
    ```
 
-   **Creating a GitHub Token:**
-   - Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
-   - Click "Generate new token (classic)"
-   - Select scopes:
-     - `repo` (for private repositories)
-     - `public_repo` (for public repositories only)
-   - Copy the generated token to your `.env` file
+   **Legacy: Environment Variables**
+   
+   For backward compatibility, you can still use `.env` file:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your credentials
+   ```
 
 ## Usage
 
-### CLI Usage
+### CLI Commands
 
-Fetch PR metadata from the command line:
-
+**Initialize Configuration:**
 ```bash
-bun run start <owner> <repo> <pr_number>
+bun run cli init
+```
+
+**Run Analysis:**
+```bash
+bun run start <owner> <repo> <pr_number> <local_repo_path>
 ```
 
 **Example:**
 ```bash
-bun run start facebook react 12345
+bun run start facebook react 12345 ~/repos/react
 ```
 
-This will output:
-- Complete PR context as JSON
-- Summary with key statistics
-- All file changes with patches
+This will:
+1. Fetch PR metadata from GitHub
+2. Checkout the PR's head SHA locally
+3. Run Bob analysis on the code changes
+4. Generate changelogs for 3 audiences (developers, PMs, users)
+5. Publish results to Notion
+
+**Get Help:**
+```bash
+bun run cli help
+```
+
+**Check Version:**
+```bash
+bun run cli version
+```
 
 ### Programmatic Usage
 
