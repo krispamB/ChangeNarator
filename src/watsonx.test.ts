@@ -5,13 +5,7 @@
 import { describe, test, expect, beforeEach, mock, afterEach } from 'bun:test';
 import { generateChangelog } from './watsonx';
 import type { BobAnalysisResult } from './types';
-
-// Store original environment variables
-const originalEnv = {
-  WATSONX_URL: process.env.WATSONX_URL,
-  WATSONX_API_KEY: process.env.WATSONX_API_KEY,
-  WATSONX_PROJECT_ID: process.env.WATSONX_PROJECT_ID,
-};
+import { createMockConfig } from './cli/config.test-helper';
 
 // Helper to create mock chat API response
 function createChatResponse(content: string) {
@@ -46,22 +40,15 @@ describe('WatsonX Module', () => {
     breaking_change_details: 'Changed API response format from XML to JSON',
   };
 
+  // Create mock config for tests
+  const mockConfig = createMockConfig();
+
   beforeEach(() => {
-    // Set up test environment variables
-    process.env.WATSONX_URL = 'https://test.watsonx.com';
-    process.env.WATSONX_API_KEY = 'test-api-key';
-    process.env.WATSONX_PROJECT_ID = 'test-project-id';
-    
     // Clear console.log mock
     mock.restore();
   });
 
   afterEach(() => {
-    // Restore original environment variables
-    process.env.WATSONX_URL = originalEnv.WATSONX_URL;
-    process.env.WATSONX_API_KEY = originalEnv.WATSONX_API_KEY;
-    process.env.WATSONX_PROJECT_ID = originalEnv.WATSONX_PROJECT_ID;
-    
     mock.restore();
   });
 
@@ -81,7 +68,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       // Verify IAM token endpoint was called
       const iamCalls = mockFetch.mock.calls.filter((call: any) =>
@@ -99,7 +86,7 @@ describe('WatsonX Module', () => {
       );
       global.fetch = mockFetch as any;
 
-      await expect(generateChangelog(mockBobAnalysis)).rejects.toThrow(
+      await expect(generateChangelog(mockBobAnalysis, mockConfig)).rejects.toThrow(
         'IAM token fetch failed: 401'
       );
     });
@@ -121,7 +108,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      const result = await generateChangelog(mockBobAnalysis);
+      const result = await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(result.devs).toBe('Test generated changelog text');
       expect(result.pms).toBe('Test generated changelog text');
@@ -145,7 +132,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await expect(generateChangelog(mockBobAnalysis)).rejects.toThrow(
+      await expect(generateChangelog(mockBobAnalysis, mockConfig)).rejects.toThrow(
         'watsonx generation failed: 500 Internal Server Error'
       );
     });
@@ -168,7 +155,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await expect(generateChangelog(mockBobAnalysis)).rejects.toThrow(
+      await expect(generateChangelog(mockBobAnalysis, mockConfig)).rejects.toThrow(
         'watsonx returned unexpected format'
       );
     });
@@ -192,7 +179,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(capturedUrl).toContain('/ml/v1/text/chat');
       expect(capturedUrl).toContain('version=2024-05-31');
@@ -217,7 +204,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(capturedHeaders).toBeDefined();
       expect(capturedHeaders['Accept']).toBe('application/json');
@@ -244,7 +231,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(capturedBody).toBeDefined();
       // Model ID comes from constant in module, just verify it exists
@@ -284,7 +271,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(capturedUserMessage).toContain('Add authentication feature');
       expect(capturedUserMessage).toContain('123');
@@ -313,7 +300,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysisWithBreakingChanges);
+      await generateChangelog(mockBobAnalysisWithBreakingChanges, mockConfig);
 
       expect(capturedUserMessage).toContain('Yes — Changed API response format from XML to JSON');
     });
@@ -338,7 +325,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(capturedUserMessage).toContain('Breaking changes: None');
     });
@@ -363,7 +350,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(capturedSystemPrompts.length).toBe(3);
       expect(capturedSystemPrompts[0]).toContain('software developers');
@@ -388,7 +375,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      const result = await generateChangelog(mockBobAnalysis);
+      const result = await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(result).toHaveProperty('devs');
       expect(result).toHaveProperty('pms');
@@ -417,7 +404,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       // All three calls should happen within a short time window (parallel execution)
       expect(callTimestamps.length).toBe(3);
@@ -442,7 +429,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await generateChangelog(mockBobAnalysis);
+      await generateChangelog(mockBobAnalysis, mockConfig);
 
       // Should only fetch IAM token once
       expect(iamTokenCallCount).toBe(1);
@@ -465,7 +452,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      await expect(generateChangelog(mockBobAnalysis)).rejects.toThrow(
+      await expect(generateChangelog(mockBobAnalysis, mockConfig)).rejects.toThrow(
         'watsonx generation failed: 429'
       );
     });
@@ -485,7 +472,7 @@ describe('WatsonX Module', () => {
       });
       global.fetch = mockFetch as any;
 
-      const result = await generateChangelog(mockBobAnalysis);
+      const result = await generateChangelog(mockBobAnalysis, mockConfig);
 
       expect(result.devs).toBe('Changelog with whitespace');
       expect(result.devs).not.toContain('\n');

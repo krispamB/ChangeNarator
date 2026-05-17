@@ -1,13 +1,7 @@
 // notion.ts
 import { Client } from '@notionhq/client';
 import type { BobAnalysisResult, ChangelogAudiences, NotionPublishResult } from './types.js';
-
-const notion = new Client({
-    auth: process.env.NOTION_TOKEN!,
-    notionVersion: '2026-03-11',
-});
-
-const PARENT_PAGE_ID = process.env.NOTION_PARENT_PAGE_ID!;
+import type { Config } from './cli/config';
 
 // --- block builders ---
 
@@ -68,7 +62,7 @@ function bulletItem(text: string) {
 }
 
 // --- chunk utility (100 block API limit) ---
-async function appendChunked(pageId: string, blocks: any[]) {
+async function appendChunked(notion: Client, pageId: string, blocks: any[]) {
     const chunkSize = 100;
     for (let i = 0; i < blocks.length; i += chunkSize) {
         await notion.blocks.children.append({
@@ -79,14 +73,19 @@ async function appendChunked(pageId: string, blocks: any[]) {
 }
 
 // --- idempotency check ---
-export async function findExistingPage(prNumber: number, repo: string): Promise<string | null> {
+export async function findExistingPage(
+    notion: Client,
+    prNumber: number,
+    repo: string,
+    parentPageId: string
+): Promise<string | null> {
     const res = await notion.search({
         query: `[${repo}] PR #${prNumber}`,
         filter: { property: 'object', value: 'page' },
     });
 
     const match = res.results.find(
-        (r: any) => r.object === 'page' && r.parent?.page_id === PARENT_PAGE_ID
+        (r: any) => r.object === 'page' && r.parent?.page_id === parentPageId
     );
 
     return match ? match.id : null;
@@ -95,14 +94,20 @@ export async function findExistingPage(prNumber: number, repo: string): Promise<
 // --- main publish function ---
 export async function publishToNotion(
     analysis: BobAnalysisResult,
-    audiences: ChangelogAudiences
+    audiences: ChangelogAudiences,
+    config: Config
 ): Promise<string> {
+    // Initialize Notion client with config
+    const notion = new Client({
+        auth: config.notion.token,
+        notionVersion: '2026-03-11',
+    });
     const title = `[${analysis.repo}] PR #${analysis.pr_number} — ${analysis.pr_title}`;
     const date = new Date().toISOString().split('T')[0];
     const changeTypeLabel = analysis.change_types.map(t => t.toUpperCase()).join(' · ');
 
     // check for existing page first
-    const existingId = await findExistingPage(analysis.pr_number, analysis.repo);
+    const existingId = await findExistingPage(notion, analysis.pr_number, analysis.repo, config.notion.parentPageId);
     if (existingId) {
         console.log(`Page already exists for PR #${analysis.pr_number}, skipping.`);
         return existingId;
@@ -110,7 +115,7 @@ export async function publishToNotion(
 
     // create the page
     const page = await notion.pages.create({
-        parent: { page_id: PARENT_PAGE_ID },
+        parent: { page_id: config.notion.parentPageId },
         icon: { type: 'emoji', emoji: '📋' },
         properties: {
             title: {
@@ -173,7 +178,7 @@ export async function publishToNotion(
     ];
 
     // append all blocks in chunks of 100
-    await appendChunked(pageId, blocks);
+    await appendChunked(notion, pageId, blocks);
 
     console.log(`✅ Notion page created: https://notion.so/${pageId.replace(/-/g, '')}`);
     return pageId;

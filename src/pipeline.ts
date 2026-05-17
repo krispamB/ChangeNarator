@@ -8,6 +8,7 @@ import { checkoutHeadSHA } from './git-operations';
 import { runBobAnalysis } from './bob-analyzer';
 import { generateChangelog } from './watsonx';
 import { publishToNotion } from './notion';
+import { loadConfig } from './cli/config';
 import type { PRContext, BobAnalysisResult, ChangelogAudiences, NotionPublishResult } from './types';
 
 /**
@@ -44,17 +45,14 @@ export async function runLocalPipeline(
     localRepoPath: string
 ): Promise<PipelineResult> {
     try {
+        // Load configuration
+        console.log('📋 Loading configuration...');
+        const config = await loadConfig();
+        console.log('✅ Configuration loaded successfully');
+
         // Step 1: Fetch PR context from GitHub API
         console.log('\n🔍 Step 1: Fetching PR context from GitHub...');
-        const githubToken = process.env.GITHUB_TOKEN;
-        
-        if (!githubToken) {
-            throw new Error(
-                'GITHUB_TOKEN environment variable is required. Please set it in your .env file.'
-            );
-        }
-
-        const fetcher = new PRFetcher(githubToken);
+        const fetcher = new PRFetcher(config.github.token);
         const prContext = await fetcher.fetchPRContext(owner, repo, prNumber);
         console.log('✅ PR context fetched successfully');
 
@@ -69,36 +67,12 @@ export async function runLocalPipeline(
 
         // Step 4: Generate changelog using WatsonX
         console.log('\n📝 Step 4: Generating changelog with WatsonX...');
-        
-        // Validate WatsonX environment variables
-        const requiredEnvVars = ['WATSONX_URL', 'WATSONX_API_KEY', 'WATSONX_PROJECT_ID'];
-        const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-        
-        if (missingVars.length > 0) {
-            throw new Error(
-                `Missing required WatsonX environment variables: ${missingVars.join(', ')}. ` +
-                'Please set them in your .env file.'
-            );
-        }
-
-        const changelog = await generateChangelog(bobAnalysis);
+        const changelog = await generateChangelog(bobAnalysis, config);
         console.log('✅ Changelog generated successfully');
 
         // Step 5: Publish to Notion
         console.log('\n📄 Step 5: Publishing to Notion...');
-        
-        // Validate Notion environment variables
-        const notionEnvVars = ['NOTION_TOKEN', 'NOTION_PARENT_PAGE_ID'];
-        const missingNotionVars = notionEnvVars.filter(varName => !process.env[varName]);
-        
-        if (missingNotionVars.length > 0) {
-            throw new Error(
-                `Missing required Notion environment variables: ${missingNotionVars.join(', ')}. ` +
-                'Please set them in your .env file.'
-            );
-        }
-
-        const pageId = await publishToNotion(bobAnalysis, changelog);
+        const pageId = await publishToNotion(bobAnalysis, changelog, config);
         const notionUrl = `https://notion.so/${pageId.replace(/-/g, '')}`;
         console.log('✅ Notion page published successfully');
 
