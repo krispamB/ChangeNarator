@@ -1,6 +1,6 @@
 {
   "name": "changenarrator",
-  "version": "1.0.2",
+  "version": "1.0.8",
   "description": "An AI-powered tool that watches code changes and automatically generates human-readable changelogs from GitHub PRs",
   "keywords": [
     "changelog",
@@ -43,6 +43,7 @@
     "build": "bun build src/index.ts --outdir ./dist --target node",
     "build:cli": "bun build src/cli/index.ts --outdir ./dist/cli --target node && cp -r src/prompts dist/",
     "cli": "bun run src/cli/index.ts",
+    "prepublishOnly": "bun run build:cli",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:watch": "bun test --watch",

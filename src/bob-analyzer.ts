@@ -5,7 +5,8 @@
 
 import { readFile, writeFile, unlink, access } from 'fs/promises';
 import { spawn } from 'child_process';
-import { join, resolve } from 'path';
+import { join, resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import type { PRContext, BobAnalysisResult } from './types';
 
 /**
@@ -197,10 +198,14 @@ export async function runBobAnalysis(prContext: PRContext, localRepoPath: string
 
     try {
         // Step 1: Read the Bob prompt template
-        // Try multiple paths to support both development and production environments
+        // Resolve paths relative to this module's location to support both development and production
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+        
         const possiblePaths = [
-            'src/prompts/bob-prompt.md',           // Development: running from source
-            'dist/prompts/bob-prompt.md',          // Production: running from built CLI
+            join(__dirname, '../prompts/bob-prompt.md'),      // Production: dist/bob-analyzer.js -> dist/prompts/
+            join(__dirname, 'prompts/bob-prompt.md'),         // Alt production path
+            join(__dirname, '../../src/prompts/bob-prompt.md'), // Development fallback
         ];
         
         let promptTemplate: string | null = null;

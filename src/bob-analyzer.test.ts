@@ -13,6 +13,7 @@ mock.module('fs/promises', () => ({
   readFile: mock(() => Promise.resolve('')),
   writeFile: mock(() => Promise.resolve()),
   unlink: mock(() => Promise.resolve()),
+  access: mock(() => Promise.resolve()),
 }));
 
 mock.module('child_process', () => ({
@@ -84,10 +85,12 @@ Return JSON only.`;
     const readFileMock = mock(() => Promise.resolve(mockPromptTemplate));
     const writeFileMock = mock(() => Promise.resolve());
     const unlinkMock = mock(() => Promise.resolve());
+    const accessMock = mock(() => Promise.resolve());
     mock.module('fs/promises', () => ({
       readFile: readFileMock,
       writeFile: writeFileMock,
       unlink: unlinkMock,
+      access: accessMock,
     }));
 
     // Mock Bob CLI execution with ---output--- markers
@@ -124,7 +127,8 @@ Return JSON only.`;
     const result = await runBobAnalysis(mockPRContext, mockLocalRepoPath);
 
     expect(result).toEqual(mockBobResponse);
-    expect(readFileMock).toHaveBeenCalledWith('src/prompts/bob-prompt.md', 'utf-8');
+    // The path will be resolved relative to the module location, so we just check it was called
+    expect(readFileMock).toHaveBeenCalled();
     expect(mockSpawn).toHaveBeenCalledWith('bob', ['-p', '-'], {
       cwd: mockLocalRepoPath,
       stdio: ['pipe', 'pipe', 'pipe'],
