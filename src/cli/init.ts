@@ -79,8 +79,8 @@ export async function initCommand(): Promise<void> {
           mask: '•',
           validate: (value) => {
             if (!value) return 'Notion token is required';
-            if (!value.startsWith('secret_')) {
-              return 'Notion token should start with "secret_"';
+            if (!value.startsWith('ntn_')) {
+              return 'Notion token should start with "ntn_"';
             }
           },
         }),

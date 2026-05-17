@@ -8,7 +8,7 @@
     "url": "https://us-south.ml.cloud.ibm.com"
   },
   "notion": {
-    "token": "secret_your_notion_token_here",
+    "token": "ntn_your_notion_token_here",
     "parentPageId": "your_notion_page_id_here"
   },
   "localReposDir": "~/repos"
