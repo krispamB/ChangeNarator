@@ -4,7 +4,7 @@
  */
 
 import { PRFetcher } from './pr-fetcher';
-import { checkoutHeadSHA } from './git-operations';
+import { checkoutHeadSHA, getCurrentBranch, checkoutBranch } from './git-operations';
 import { runBobAnalysis } from './bob-analyzer';
 import { generateChangelog } from './watsonx';
 import { publishToNotion } from './notion';
@@ -44,11 +44,23 @@ export async function runLocalPipeline(
     prNumber: number,
     localRepoPath: string
 ): Promise<PipelineResult> {
+    // Capture the original branch before any operations
+    let originalBranch: string | null = null;
+    
     try {
         // Load configuration
         console.log('📋 Loading configuration...');
         const config = await loadConfig();
         console.log('✅ Configuration loaded successfully');
+
+        // Capture current branch before checkout
+        console.log('\n💾 Capturing current branch...');
+        originalBranch = await getCurrentBranch(localRepoPath);
+        if (originalBranch) {
+            console.log(`✅ Current branch: ${originalBranch}`);
+        } else {
+            console.log('⚠️  Repository is in detached HEAD state');
+        }
 
         // Step 1: Fetch PR context from GitHub API
         console.log('\n🔍 Step 1: Fetching PR context from GitHub...');
@@ -76,6 +88,12 @@ export async function runLocalPipeline(
         const notionUrl = `https://notion.so/${pageId.replace(/-/g, '')}`;
         console.log('✅ Notion page published successfully');
 
+        // Restore original branch
+        if (originalBranch) {
+            console.log(`\n🔙 Restoring original branch: ${originalBranch}...`);
+            await checkoutBranch(localRepoPath, originalBranch);
+        }
+
         return {
             prContext,
             bobAnalysis,
@@ -87,6 +105,17 @@ export async function runLocalPipeline(
         };
     } catch (error: any) {
         console.error('\n❌ Pipeline failed:', error.message);
+        
+        // Attempt to restore original branch even on failure
+        if (originalBranch) {
+            try {
+                console.log(`\n🔙 Attempting to restore original branch: ${originalBranch}...`);
+                await checkoutBranch(localRepoPath, originalBranch);
+            } catch (restoreError: any) {
+                console.error(`⚠️  Failed to restore original branch: ${restoreError.message}`);
+            }
+        }
+        
         throw error;
     }
 }

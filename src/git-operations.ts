@@ -67,6 +67,50 @@ async function validateGitRepository(repoPath: string): Promise<void> {
 }
 
 /**
+ * Gets the current branch name in the local repository
+ * @param localRepoPath - Path to the local git repository
+ * @returns The current branch name, or null if in detached HEAD state
+ * @throws Error if repository is invalid or command fails
+ */
+export async function getCurrentBranch(localRepoPath: string): Promise<string | null> {
+    // Validate the repository
+    await validateGitRepository(localRepoPath);
+
+    try {
+        // Get the current branch name
+        const branchName = await executeGitCommand(localRepoPath, ['rev-parse', '--abbrev-ref', 'HEAD']);
+        
+        // If in detached HEAD state, git returns "HEAD"
+        if (branchName === 'HEAD') {
+            return null;
+        }
+        
+        return branchName;
+    } catch (error: any) {
+        throw new Error(`Failed to get current branch: ${error.message}`);
+    }
+}
+
+/**
+ * Checks out the specified branch in the local repository
+ * @param localRepoPath - Path to the local git repository
+ * @param branchName - The branch name to checkout
+ * @throws Error if repository is invalid or checkout fails
+ */
+export async function checkoutBranch(localRepoPath: string, branchName: string): Promise<void> {
+    // Validate the repository
+    await validateGitRepository(localRepoPath);
+
+    try {
+        console.log(`🔄 Checking out branch: ${branchName}...`);
+        await executeGitCommand(localRepoPath, ['checkout', branchName]);
+        console.log('✅ Successfully checked out branch');
+    } catch (error: any) {
+        throw new Error(`Failed to checkout branch: ${error.message}`);
+    }
+}
+
+/**
  * Checks out the specified SHA in the local repository
  * @param localRepoPath - Path to the local git repository
  * @param headSHA - The commit SHA to checkout
