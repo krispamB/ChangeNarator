@@ -1,6 +1,10 @@
 # ChangeNarator
 
-ChangeNarrator - An agent that watches code changes and automatically generates human-readable changelogs, published as a newsletter or release note.
+[![npm version](https://badge.fury.io/js/changenarrator.svg)](https://www.npmjs.com/package/changenarrator)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+
+ChangeNarrator - An AI-powered tool that watches code changes and automatically generates human-readable changelogs from GitHub PRs, published as a newsletter or release note.
 
 ## Features
 
@@ -11,12 +15,23 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
   - Changed files with patches
   - Addition/deletion statistics
 
-## Prerequisites
+## Installation
 
-- [Bun](https://bun.sh) runtime installed
-- GitHub Personal Access Token with appropriate permissions
+### Via npm (Recommended)
 
-## Setup
+```bash
+npm install -g changenarrator
+```
+
+Or using npx (no installation required):
+
+```bash
+npx changenarrator init
+```
+
+### From Source
+
+If you want to contribute or run from source:
 
 1. **Clone the repository**
    ```bash
@@ -29,11 +44,34 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
    bun install
    ```
 
+## Prerequisites
+
+- Node.js >= 20
+- GitHub Personal Access Token with appropriate permissions
+- IBM WatsonX API credentials (for AI-powered changelog generation)
+- Notion Integration Token (for publishing changelogs)
+
+## Quick Start
+
+After installation, initialize the configuration:
+
+```bash
+changenarator init
+```
+
+This interactive wizard will guide you through setting up:
+- GitHub Personal Access Token
+- IBM WatsonX API credentials
+- Notion integration
+- Local repository directory
+
+## Setup
+
 3. **Configure ChangeNarator**
    
    Run the interactive setup wizard:
    ```bash
-   bun run cli init
+   changenarator init
    ```
    
    This will prompt you for:
@@ -82,17 +120,17 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
 
 **Initialize Configuration:**
 ```bash
-bun run cli init
+changenarator init
 ```
 
 **Run Analysis:**
 ```bash
-bun run start <owner> <repo> <pr_number> <local_repo_path>
+changenarator <owner> <repo> <pr_number> <local_repo_path>
 ```
 
 **Example:**
 ```bash
-bun run start facebook react 12345 ~/repos/react
+changenarator facebook react 12345 ~/repos/react
 ```
 
 This will:
@@ -104,12 +142,12 @@ This will:
 
 **Get Help:**
 ```bash
-bun run cli help
+changenarator --help
 ```
 
 **Check Version:**
 ```bash
-bun run cli version
+changenarator --version
 ```
 
 ### Programmatic Usage
