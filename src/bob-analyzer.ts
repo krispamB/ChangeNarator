@@ -3,9 +3,9 @@
  * Processes PR context and returns structured analysis using Bob CLI
  */
 
-import { readFile, writeFile, unlink } from 'fs/promises';
+import { readFile, writeFile, unlink, access } from 'fs/promises';
 import { spawn } from 'child_process';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import type { PRContext, BobAnalysisResult } from './types';
 
 /**
@@ -179,7 +179,7 @@ async function executeBobCLI(promptContent: string, workingDirectory: string): P
  * Runs Bob analysis on PR context data
  *
  * This function:
- * 1. Reads the Bob prompt template from src/prompts/bob-prompt.md
+ * 1. Reads the Bob prompt template from src/prompts/bob-prompt.md (dev) or dist/prompts/bob-prompt.md (prod)
  * 2. Replaces {{PR_CONTEXT}} with the stringified PRContext
  * 3. Creates a temporary prompt file in the local repo
  * 4. Executes Bob CLI within the local repo directory
@@ -197,13 +197,32 @@ export async function runBobAnalysis(prContext: PRContext, localRepoPath: string
 
     try {
         // Step 1: Read the Bob prompt template
-        const promptTemplatePath = 'src/prompts/bob-prompt.md';
-        let promptTemplate: string;
+        // Try multiple paths to support both development and production environments
+        const possiblePaths = [
+            'src/prompts/bob-prompt.md',           // Development: running from source
+            'dist/prompts/bob-prompt.md',          // Production: running from built CLI
+        ];
+        
+        let promptTemplate: string | null = null;
+        let successfulPath: string | null = null;
 
-        try {
-            promptTemplate = await readFile(promptTemplatePath, 'utf-8');
-        } catch (error: any) {
-            throw new Error(`Failed to read Bob prompt template at ${promptTemplatePath}: ${error.message}`);
+        // Try each path until we find one that works
+        for (const path of possiblePaths) {
+            try {
+                await access(path);
+                promptTemplate = await readFile(path, 'utf-8');
+                successfulPath = path;
+                break;
+            } catch {
+                // Path doesn't exist, try next one
+                continue;
+            }
+        }
+
+        if (!promptTemplate || !successfulPath) {
+            throw new Error(
+                `Failed to read Bob prompt template. Tried paths:\n${possiblePaths.map(p => `  - ${p}`).join('\n')}`
+            );
         }
 
         // Step 2: Replace {{PR_CONTEXT}} with the actual PR context JSON

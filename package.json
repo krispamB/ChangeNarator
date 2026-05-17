@@ -33,17 +33,6 @@
     "dist/",
     "README.md",
     "LICENSE"
-  "version": "1.0.0",
-  "module": "src/index.ts",
-  "type": "module",
-  "private": true,
-  "bin": {
-    "changenarator": "./dist/cli/index.js"
-  },
-  "files": [
-    "dist/",
-    "bin/",
-    "README.md"
   ],
   "engines": {
     "node": ">=20"
@@ -52,7 +41,7 @@
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir ./dist --target node",
-    "build:cli": "bun build src/cli/index.ts --outdir ./dist/cli --target node",
+    "build:cli": "bun build src/cli/index.ts --outdir ./dist/cli --target node && cp -r src/prompts dist/",
     "cli": "bun run src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
