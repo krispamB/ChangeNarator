@@ -151,6 +151,9 @@ USAGE:
 
 COMMANDS:
   analyze           Analyze a GitHub PR and generate changelog (default command)
+  changenarator <command> [options]
+
+COMMANDS:
   init              Interactive setup wizard to configure ChangeNarator
   help, --help, -h  Show this help message
   version, -v       Show version information
@@ -169,6 +172,13 @@ EXAMPLES:
   changenarator help
 
 For more information, visit: https://github.com/krispamB/ChangeNarator
+  # Set up configuration
+  changenarator init
+
+  # Run analysis (after setup)
+  bun run start <owner> <repo> <pr_number> <local_repo_path>
+
+For more information, visit: https://github.com/yourusername/changenarator
   `);
 }
 

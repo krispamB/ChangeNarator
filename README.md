@@ -120,6 +120,45 @@ If you want to contribute or run from source:
    # Edit config.json with your credentials
    ```
 
+3. **Configure ChangeNarator**
+   
+   Run the interactive setup wizard:
+   ```bash
+   bun run cli init
+   ```
+   
+   This will prompt you for:
+   - **GitHub Personal Access Token** - For fetching PR data
+   - **IBM WatsonX API Key** - For AI-powered changelog generation
+   - **WatsonX Project ID** - Your WatsonX project identifier
+   - **WatsonX Region URL** - Default: `https://us-south.ml.cloud.ibm.com`
+   - **Notion Integration Token** - For publishing changelogs
+   - **Notion Parent Page ID** - Where changelogs will be published
+   - **Local repos directory** - Where repositories will be cloned (default: `~/repos`)
+
+   Configuration is saved to `config.json` (automatically added to `.gitignore`).
+
+   **Creating Required Tokens:**
+   
+   - **GitHub Token**: [GitHub Settings > Tokens](https://github.com/settings/tokens)
+     - Select scopes: `repo` (private repos) or `public_repo` (public only)
+   
+   - **WatsonX Credentials**: [IBM Cloud](https://cloud.ibm.com/)
+     - Create a WatsonX.ai instance
+     - Get your API key and project ID
+   
+   - **Notion Token**: [Notion Integrations](https://www.notion.so/my-integrations)
+     - Create a new integration
+     - Share a page with your integration to get the page ID
+
+   **Alternative: Manual Configuration**
+   
+   You can also manually create `config.json` based on `config.example.json`:
+   ```bash
+   cp config.example.json config.json
+   # Edit config.json with your credentials
+   ```
+
    **Legacy: Environment Variables**
    
    For backward compatibility, you can still use `.env` file:
@@ -140,6 +179,12 @@ changenarator init
 **Run Analysis (Default Command):**
 ```bash
 changenarator <owner> <repo> <pr_number> <local_repo_path>
+bun run cli init
+```
+
+**Run Analysis:**
+```bash
+bun run start <owner> <repo> <pr_number> <local_repo_path>
 ```
 
 **Example:**
@@ -150,6 +195,7 @@ changenarator facebook react 12345 ~/repos/react
 **Alternative (Explicit Command):**
 ```bash
 changenarator analyze facebook react 12345 ~/repos/react
+bun run start facebook react 12345 ~/repos/react
 ```
 
 This will:
@@ -164,6 +210,7 @@ This will:
 changenarator help
 # or
 changenarator --help
+bun run cli help
 ```
 
 **Check Version:**
@@ -171,6 +218,7 @@ changenarator --help
 changenarator version
 # or
 changenarator --version
+bun run cli version
 ```
 
 ### Programmatic Usage

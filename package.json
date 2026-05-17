@@ -33,6 +33,17 @@
     "dist/",
     "README.md",
     "LICENSE"
+  "version": "1.0.0",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "changenarator": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist/",
+    "bin/",
+    "README.md"
   ],
   "engines": {
     "node": ">=20"
