@@ -1,6 +1,10 @@
 # ChangeNarator
 
-ChangeNarrator - An agent that watches code changes and automatically generates human-readable changelogs, published as a newsletter or release note.
+[![npm version](https://badge.fury.io/js/changenarrator.svg)](https://www.npmjs.com/package/changenarrator)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+
+ChangeNarrator - An AI-powered tool that watches code changes and automatically generates human-readable changelogs from GitHub PRs, published as a newsletter or release note.
 
 ## Features
 
@@ -11,12 +15,23 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
   - Changed files with patches
   - Addition/deletion statistics
 
-## Prerequisites
+## Installation
 
-- [Bun](https://bun.sh) runtime installed
-- GitHub Personal Access Token with appropriate permissions
+### Via npm (Recommended)
 
-## Setup
+```bash
+npm install -g changenarrator
+```
+
+Or using npx (no installation required):
+
+```bash
+npx changenarrator init
+```
+
+### From Source
+
+If you want to contribute or run from source:
 
 1. **Clone the repository**
    ```bash
@@ -27,6 +42,82 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
 2. **Install dependencies**
    ```bash
    bun install
+   ```
+
+## Prerequisites
+
+- Node.js >= 20
+- GitHub Personal Access Token with appropriate permissions
+- IBM WatsonX API credentials (for AI-powered changelog generation)
+- Notion Integration Token (for publishing changelogs)
+
+## Quick Start
+
+1. **Install ChangeNarator:**
+   ```bash
+   npm install -g changenarrator
+   ```
+
+2. **Initialize configuration:**
+   ```bash
+   changenarator init
+   ```
+   
+   This interactive wizard will guide you through setting up:
+   - GitHub Personal Access Token
+   - IBM WatsonX API credentials
+   - Notion integration
+   - Local repository directory
+
+3. **Analyze a PR:**
+   ```bash
+   changenarator <owner> <repo> <pr_number> <local_repo_path>
+   ```
+   
+   Example:
+   ```bash
+   changenarator facebook react 12345 ~/repos/react
+   ```
+
+## Setup
+
+3. **Configure ChangeNarator**
+   
+   Run the interactive setup wizard:
+   ```bash
+   changenarator init
+   ```
+   
+   This will prompt you for:
+   - **GitHub Personal Access Token** - For fetching PR data
+   - **IBM WatsonX API Key** - For AI-powered changelog generation
+   - **WatsonX Project ID** - Your WatsonX project identifier
+   - **WatsonX Region URL** - Default: `https://us-south.ml.cloud.ibm.com`
+   - **Notion Integration Token** - For publishing changelogs
+   - **Notion Parent Page ID** - Where changelogs will be published
+   - **Local repos directory** - Where repositories will be cloned (default: `~/repos`)
+
+   Configuration is saved to `config.json` (automatically added to `.gitignore`).
+
+   **Creating Required Tokens:**
+   
+   - **GitHub Token**: [GitHub Settings > Tokens](https://github.com/settings/tokens)
+     - Select scopes: `repo` (private repos) or `public_repo` (public only)
+   
+   - **WatsonX Credentials**: [IBM Cloud](https://cloud.ibm.com/)
+     - Create a WatsonX.ai instance
+     - Get your API key and project ID
+   
+   - **Notion Token**: [Notion Integrations](https://www.notion.so/my-integrations)
+     - Create a new integration
+     - Share a page with your integration to get the page ID
+
+   **Alternative: Manual Configuration**
+   
+   You can also manually create `config.json` based on `config.example.json`:
+   ```bash
+   cp config.example.json config.json
+   # Edit config.json with your credentials
    ```
 
 3. **Configure ChangeNarator**
@@ -82,6 +173,12 @@ ChangeNarrator - An agent that watches code changes and automatically generates 
 
 **Initialize Configuration:**
 ```bash
+changenarator init
+```
+
+**Run Analysis (Default Command):**
+```bash
+changenarator <owner> <repo> <pr_number> <local_repo_path>
 bun run cli init
 ```
 
@@ -92,6 +189,12 @@ bun run start <owner> <repo> <pr_number> <local_repo_path>
 
 **Example:**
 ```bash
+changenarator facebook react 12345 ~/repos/react
+```
+
+**Alternative (Explicit Command):**
+```bash
+changenarator analyze facebook react 12345 ~/repos/react
 bun run start facebook react 12345 ~/repos/react
 ```
 
@@ -104,11 +207,17 @@ This will:
 
 **Get Help:**
 ```bash
+changenarator help
+# or
+changenarator --help
 bun run cli help
 ```
 
 **Check Version:**
 ```bash
+changenarator version
+# or
+changenarator --version
 bun run cli version
 ```
 
@@ -271,18 +380,24 @@ The script handles various error scenarios:
 
 ## Examples
 
-### Fetch a PR from a public repository
+### Analyze a PR from a public repository
 
 ```bash
-bun run start vercel next.js 50000
+changenarator vercel next.js 50000 ~/repos/nextjs
 ```
 
-### Fetch a PR from a private repository
+### Analyze a PR from a private repository
 
-Ensure your `GITHUB_TOKEN` has `repo` scope:
+Ensure your GitHub token (configured via `changenarator init`) has `repo` scope:
 
 ```bash
-bun run start your-org your-private-repo 123
+changenarator your-org your-private-repo 123 ~/repos/your-private-repo
+```
+
+### Using npm scripts (for development)
+
+```bash
+bun run start vercel next.js 50000 ~/repos/nextjs
 ```
 
 ### Use in your own script
