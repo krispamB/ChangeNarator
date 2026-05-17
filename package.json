@@ -18,16 +18,16 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/ChangeNarator.git"
+    "url": "git+https://github.com/krispamB/ChangeNarator.git"
   },
-  "homepage": "https://github.com/yourusername/ChangeNarator#readme",
+  "homepage": "https://github.com/krispamB/ChangeNarator#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/ChangeNarator/issues"
+    "url": "https://github.com/krispamB/ChangeNarator/issues"
   },
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "changenarator": "dist/cli/index.js"
+    "changenarrator": "dist/cli/index.js"
   },
   "files": [
     "dist/",
