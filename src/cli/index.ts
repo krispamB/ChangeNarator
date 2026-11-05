@@ -4,21 +4,24 @@
  * Handles command routing and execution
  */
 
+import 'dotenv/config';
 import { initCommand } from './init';
 import { runLocalPipeline } from '../pipeline';
+import { parseAnalyzeArguments, type AnalyzeArguments } from './args';
 
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
-  // Check if this is an analyze command (4 args without a command keyword)
-  // or explicit 'analyze' command with 4 additional args
-  const isAnalyzeCommand =
-    (args.length === 4 && command && !['init', 'help', '--help', '-h', 'version', '--version', '-v'].includes(command)) ||
-    (command === 'analyze' && args.length === 5);
-
-  if (isAnalyzeCommand) {
-    await analyzeCommand(args);
+  const reservedCommands = ['init', 'help', '--help', '-h', 'version', '--version', '-v'];
+  if (command === 'analyze' || (command && !reservedCommands.includes(command))) {
+    try {
+      await analyzeCommand(parseAnalyzeArguments(args));
+    } catch (error) {
+      console.error(`❌ ${error instanceof Error ? error.message : 'Invalid arguments'}\n`);
+      showHelp();
+      process.exit(1);
+    }
     return;
   }
 
@@ -55,27 +58,13 @@ async function main() {
  * Accepts either: <owner> <repo> <pr_number> <local_repo_path>
  * Or: analyze <owner> <repo> <pr_number> <local_repo_path>
  */
-async function analyzeCommand(args: string[]) {
-  // Handle both formats: with or without 'analyze' keyword
-  const startIndex = args[0] === 'analyze' ? 1 : 0;
-  const owner = args[startIndex];
-  const repo = args[startIndex + 1];
-  const prNumberStr = args[startIndex + 2];
-  const localRepoPath = args[startIndex + 3];
-
-  if (!owner || !repo || !prNumberStr || !localRepoPath) {
-    console.error('❌ Error: All arguments are required');
-    console.error('   Usage: changenarator <owner> <repo> <pr_number> <local_repo_path>');
-    console.error('   Example: changenarator facebook react 12345 ~/repos/react');
-    process.exit(1);
-  }
-
-  const prNumber = parseInt(prNumberStr, 10);
-
-  if (isNaN(prNumber)) {
-    console.error('❌ Error: PR number must be a valid number');
-    process.exit(1);
-  }
+async function analyzeCommand({
+  owner,
+  repo,
+  prNumber,
+  localRepoPath,
+  options,
+}: AnalyzeArguments) {
 
   try {
     console.log('🚀 ChangeNarator - Local PR Analysis Pipeline\n');
@@ -83,11 +72,12 @@ async function analyzeCommand(args: string[]) {
     console.log(`🔗 Analyzing: ${owner}/${repo} PR #${prNumber}\n`);
 
     // Run the complete pipeline
-    const { prContext, bobAnalysis, changelog, notionPage } = await runLocalPipeline(
+    const { prContext, analysis, changelog, notionPage, ai } = await runLocalPipeline(
       owner,
       repo,
       prNumber,
-      localRepoPath
+      localRepoPath,
+      options,
     );
 
     // Display PR Context
@@ -101,11 +91,11 @@ async function analyzeCommand(args: string[]) {
     console.log(`Files Changed: ${prContext.stats.total_files}`);
     console.log(`Total Commits: ${prContext.stats.total_commits}`);
 
-    // Display Bob Analysis
+    // Display provider-neutral analysis
     console.log('\n' + '='.repeat(80));
-    console.log('🤖 BOB ANALYSIS');
+    console.log(`🤖 CHANGE ANALYSIS (${ai.analysis.provider})`);
     console.log('='.repeat(80));
-    console.log(JSON.stringify(bobAnalysis, null, 2));
+    console.log(JSON.stringify(analysis, null, 2));
     console.log('='.repeat(80));
 
     // Display Generated Changelog
@@ -146,14 +136,11 @@ function showHelp() {
 🚀 ChangeNarator CLI
 
 USAGE:
-  changenarator <owner> <repo> <pr_number> <local_repo_path>
+  changenarator [analyze] [--provider <provider>] [--model <model>] <owner> <repo> <pr_number> <local_repo_path>
   changenarator <command> [options]
 
 COMMANDS:
   analyze           Analyze a GitHub PR and generate changelog (default command)
-  changenarator <command> [options]
-
-COMMANDS:
   init              Interactive setup wizard to configure ChangeNarator
   help, --help, -h  Show this help message
   version, -v       Show version information
@@ -168,17 +155,13 @@ EXAMPLES:
   # Analyze a PR (explicit command)
   changenarator analyze facebook react 12345 ~/repos/react
 
+  # Override the configured provider and model
+  changenarator analyze --provider anthropic --model claude-sonnet-5 facebook react 12345 ~/repos/react
+
   # Get help
   changenarator help
 
 For more information, visit: https://github.com/krispamB/ChangeNarator
-  # Set up configuration
-  changenarator init
-
-  # Run analysis (after setup)
-  bun run start <owner> <repo> <pr_number> <local_repo_path>
-
-For more information, visit: https://github.com/yourusername/changenarator
   `);
 }
 

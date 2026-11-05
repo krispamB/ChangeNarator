@@ -1,5 +1,9 @@
 # Bob Analysis Integration Guide
 
+> This guide documents the Bob-specific adapter and the legacy Bob→WatsonX
+> pipeline. For unified provider setup and current CLI usage, see the
+> [project README](../README.md).
+
 ## Overview
 
 The `runBobAnalysis` function integrates Bob CLI to analyze GitHub PR changes and return structured insights. This guide provides recommendations for ensuring the PR context data is properly formatted for Bob analysis.

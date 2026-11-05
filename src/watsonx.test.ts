@@ -245,8 +245,8 @@ describe('WatsonX Module', () => {
       expect(capturedBody.messages[0].role).toBe('system');
       expect(capturedBody.messages[1].role).toBe('user');
       expect(capturedBody.messages[1].content[0].type).toBe('text');
-      expect(capturedBody.parameters.max_new_tokens).toBe(500);
-      expect(capturedBody.parameters.time_limit).toBe(10000);
+      expect(capturedBody.max_tokens).toBe(500);
+      expect(capturedBody.time_limit).toBe(10000);
     });
   });
 

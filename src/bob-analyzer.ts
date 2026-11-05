@@ -3,9 +3,9 @@
  * Processes PR context and returns structured analysis using Bob CLI
  */
 
-import { readFile, writeFile, unlink, access } from 'fs/promises';
+import { readFile, access } from 'fs/promises';
 import { spawn } from 'child_process';
-import { join, resolve, dirname } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { PRContext, BobAnalysisResult } from './types';
 
@@ -145,6 +145,7 @@ async function executeBobCLI(promptContent: string, workingDirectory: string): P
         const bobProcess = spawn('bob', ['-p', '-'], {
             cwd: workingDirectory,
             stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 120_000,
         });
 
         let stdout = '';
@@ -163,6 +164,10 @@ async function executeBobCLI(promptContent: string, workingDirectory: string): P
         });
 
         bobProcess.on('close', (code) => {
+            if (bobProcess.killed) {
+                reject(new Error('Bob CLI timed out after 120000ms'));
+                return;
+            }
             if (code !== 0) {
                 reject(new Error(`Bob CLI exited with code ${code}. stderr: ${stderr}`));
             } else {
@@ -194,8 +199,6 @@ async function executeBobCLI(promptContent: string, workingDirectory: string): P
  * @throws Error if prompt file cannot be read, Bob execution fails, or response is invalid
  */
 export async function runBobAnalysis(prContext: PRContext, localRepoPath: string): Promise<BobAnalysisResult> {
-    const tempPromptFile = join(localRepoPath, '.bob-prompt-temp.md');
-
     try {
         // Step 1: Read the Bob prompt template
         // Resolve paths relative to this module's location to support both development and production
@@ -234,14 +237,7 @@ export async function runBobAnalysis(prContext: PRContext, localRepoPath: string
         const prContextJson = JSON.stringify(prContext, null, 2);
         const resolvedPrompt = promptTemplate.replace('{{PR_CONTEXT}}', prContextJson);
 
-        // Step 3: Write the resolved prompt to a temp file in the local repo
-        try {
-            await writeFile(tempPromptFile, resolvedPrompt, 'utf-8');
-        } catch (error: any) {
-            throw new Error(`Failed to write temp prompt file: ${error.message}`);
-        }
-
-        // Step 4: Execute Bob CLI within the local repo directory
+        // Step 3: Execute Bob CLI within the local repo directory
         let bobOutput: string;
         try {
             bobOutput = await executeBobCLI(resolvedPrompt, localRepoPath);
@@ -249,7 +245,7 @@ export async function runBobAnalysis(prContext: PRContext, localRepoPath: string
             throw new Error(`Bob CLI execution failed: ${error.message}`);
         }
 
-        // Step 5: Extract output from between ---output--- markers and parse JSON
+        // Step 4: Extract output from between ---output--- markers and parse JSON
         let parsedResult: any;
         try {
             // Extract content between ---output--- markers
@@ -265,7 +261,7 @@ export async function runBobAnalysis(prContext: PRContext, localRepoPath: string
             throw new Error(`Failed to parse Bob output as JSON: ${error.message}\nExtracted output: ${bobOutput.substring(0, 500)}...`);
         }
 
-        // Step 6: Validate the schema
+        // Step 5: Validate the schema
         validateBobAnalysisResult(parsedResult);
 
         return parsedResult as BobAnalysisResult;
@@ -275,13 +271,6 @@ export async function runBobAnalysis(prContext: PRContext, localRepoPath: string
             throw error;
         }
         throw new Error(`Bob analysis failed: ${error.message}`);
-    } finally {
-        // Step 7: Clean up the temp file
-        try {
-            await unlink(tempPromptFile);
-        } catch {
-            // Ignore cleanup errors
-        }
     }
 }
 

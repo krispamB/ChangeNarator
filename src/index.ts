@@ -10,7 +10,22 @@ import type { PRContext } from './types';
 
 // Export pipeline for programmatic use
 export { runLocalPipeline } from './pipeline';
-export type { PipelineResult } from './pipeline';
+export { PROVIDER_IDS } from './types';
+export type { PipelineOptions, PipelineResult } from './pipeline';
+export type {
+  AIExecutionMetadata,
+  BobAnalysisResult,
+  ChangeAnalysisResult,
+  ChangelogAudiences,
+  ProviderId,
+  ProviderStageMetadata,
+} from './types';
+export type {
+  AIProvider,
+  AnalysisInput,
+  ProviderExecutionOptions,
+  ProviderResult,
+} from './providers/contracts';
 
 /**
  * Main function to fetch PR context
@@ -71,7 +86,7 @@ async function main() {
     console.log(`🔗 Analyzing: ${owner}/${repo} PR #${prNumber}\n`);
 
     // Run the complete pipeline
-    const { prContext, bobAnalysis, changelog } = await runLocalPipeline(
+    const { prContext, analysis, changelog, ai } = await runLocalPipeline(
       owner,
       repo,
       prNumber,
@@ -89,11 +104,11 @@ async function main() {
     console.log(`Files Changed: ${prContext.stats.total_files}`);
     console.log(`Total Commits: ${prContext.stats.total_commits}`);
 
-    // Display Bob Analysis
+    // Display provider-neutral analysis
     console.log('\n' + '='.repeat(80));
-    console.log('🤖 BOB ANALYSIS');
+    console.log(`🤖 CHANGE ANALYSIS (${ai.analysis.provider})`);
     console.log('='.repeat(80));
-    console.log(JSON.stringify(bobAnalysis, null, 2));
+    console.log(JSON.stringify(analysis, null, 2));
     console.log('='.repeat(80));
 
     // Display Generated Changelog

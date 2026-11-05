@@ -4,435 +4,205 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
 
-ChangeNarrator - An AI-powered tool that watches code changes and automatically generates human-readable changelogs from GitHub PRs, published as a newsletter or release note.
+ChangeNarator fetches a GitHub pull request, analyzes its changes with your chosen AI provider, writes changelogs for developers, product managers, and users, and publishes the result to Notion.
 
-## Features
+## Supported AI providers
 
-- 🔍 **PR Metadata Fetcher**: Fetch complete PR context from GitHub including:
-  - Base and head SHA
-  - PR title and number
-  - All commit messages
-  - Changed files with patches
-  - Addition/deletion statistics
+| Provider ID | Access | Tested default | Authentication |
+| --- | --- | --- | --- |
+| `bob` | Bob CLI | CLI default | Existing Bob login |
+| `claude-code` | Claude Code CLI | `claude-sonnet-5` | Existing Claude Code login |
+| `codex` | OpenAI Codex CLI | `gpt-5.6-sol` | Existing Codex login |
+| `watsonx` | IBM WatsonX API | `ibm/granite-4-h-small` | `WATSONX_API_KEY` |
+| `anthropic` | Anthropic API | `claude-sonnet-5` | `ANTHROPIC_API_KEY` |
+| `openai` | OpenAI Responses API | `gpt-5.6-sol` | `OPENAI_API_KEY` |
+| `openrouter` | OpenRouter API | `openai/gpt-5.4-mini` | `OPENROUTER_API_KEY` |
+
+CLI providers run read-only inside the checked-out repository and can inspect repository context. API providers receive PR metadata, commit messages, and bounded changed-file patches only. ChangeNarator does not upload unrelated repository files.
+
+Local CLI provider support currently targets macOS. The selected provider performs both change analysis and changelog generation in two structured invocations.
 
 ## Installation
 
-### Via npm (Recommended)
-
 ```bash
 npm install -g changenarrator
+changenarator init
 ```
 
-Or using npx (no installation required):
+Requirements:
 
-```bash
-npx changenarrator init
-```
+- Node.js 20 or newer
+- A GitHub personal access token
+- A Notion integration token and parent page
+- Either a supported, authenticated local CLI or an API-provider key
 
-### From Source
+## Configuration
 
-If you want to contribute or run from source:
+Run the setup wizard:
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd ChangeNarator
-   ```
-
-2. **Install dependencies**
-   ```bash
-   bun install
-   ```
-
-## Prerequisites
-
-- Node.js >= 20
-- GitHub Personal Access Token with appropriate permissions
-- IBM WatsonX API credentials (for AI-powered changelog generation)
-- Notion Integration Token (for publishing changelogs)
-
-## Quick Start
-
-1. **Install ChangeNarator:**
-   ```bash
-   npm install -g changenarrator
-   ```
-
-2. **Initialize configuration:**
-   ```bash
-   changenarator init
-   ```
-   
-   This interactive wizard will guide you through setting up:
-   - GitHub Personal Access Token
-   - IBM WatsonX API credentials
-   - Notion integration
-   - Local repository directory
-
-3. **Analyze a PR:**
-   ```bash
-   changenarator <owner> <repo> <pr_number> <local_repo_path>
-   ```
-   
-   Example:
-   ```bash
-   changenarator facebook react 12345 ~/repos/react
-   ```
-
-## Setup
-
-3. **Configure ChangeNarator**
-   
-   Run the interactive setup wizard:
-   ```bash
-   changenarator init
-   ```
-   
-   This will prompt you for:
-   - **GitHub Personal Access Token** - For fetching PR data
-   - **IBM WatsonX API Key** - For AI-powered changelog generation
-   - **WatsonX Project ID** - Your WatsonX project identifier
-   - **WatsonX Region URL** - Default: `https://us-south.ml.cloud.ibm.com`
-   - **Notion Integration Token** - For publishing changelogs
-   - **Notion Parent Page ID** - Where changelogs will be published
-   - **Local repos directory** - Where repositories will be cloned (default: `~/repos`)
-
-   Configuration is saved to `config.json` (automatically added to `.gitignore`).
-
-   **Creating Required Tokens:**
-   
-   - **GitHub Token**: [GitHub Settings > Tokens](https://github.com/settings/tokens)
-     - Select scopes: `repo` (private repos) or `public_repo` (public only)
-   
-   - **WatsonX Credentials**: [IBM Cloud](https://cloud.ibm.com/)
-     - Create a WatsonX.ai instance
-     - Get your API key and project ID
-   
-   - **Notion Token**: [Notion Integrations](https://www.notion.so/my-integrations)
-     - Create a new integration
-     - Share a page with your integration to get the page ID
-
-   **Alternative: Manual Configuration**
-   
-   You can also manually create `config.json` based on `config.example.json`:
-   ```bash
-   cp config.example.json config.json
-   # Edit config.json with your credentials
-   ```
-
-3. **Configure ChangeNarator**
-   
-   Run the interactive setup wizard:
-   ```bash
-   bun run cli init
-   ```
-   
-   This will prompt you for:
-   - **GitHub Personal Access Token** - For fetching PR data
-   - **IBM WatsonX API Key** - For AI-powered changelog generation
-   - **WatsonX Project ID** - Your WatsonX project identifier
-   - **WatsonX Region URL** - Default: `https://us-south.ml.cloud.ibm.com`
-   - **Notion Integration Token** - For publishing changelogs
-   - **Notion Parent Page ID** - Where changelogs will be published
-   - **Local repos directory** - Where repositories will be cloned (default: `~/repos`)
-
-   Configuration is saved to `config.json` (automatically added to `.gitignore`).
-
-   **Creating Required Tokens:**
-   
-   - **GitHub Token**: [GitHub Settings > Tokens](https://github.com/settings/tokens)
-     - Select scopes: `repo` (private repos) or `public_repo` (public only)
-   
-   - **WatsonX Credentials**: [IBM Cloud](https://cloud.ibm.com/)
-     - Create a WatsonX.ai instance
-     - Get your API key and project ID
-   
-   - **Notion Token**: [Notion Integrations](https://www.notion.so/my-integrations)
-     - Create a new integration
-     - Share a page with your integration to get the page ID
-
-   **Alternative: Manual Configuration**
-   
-   You can also manually create `config.json` based on `config.example.json`:
-   ```bash
-   cp config.example.json config.json
-   # Edit config.json with your credentials
-   ```
-
-   **Legacy: Environment Variables**
-   
-   For backward compatibility, you can still use `.env` file:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
-
-## Usage
-
-### CLI Commands
-
-**Initialize Configuration:**
 ```bash
 changenarator init
 ```
 
-**Run Analysis (Default Command):**
+The wizard:
+
+- configures GitHub and Notion;
+- lets you enable multiple AI providers;
+- selects one default provider;
+- optionally saves provider-specific model choices;
+- never writes Anthropic, OpenAI, OpenRouter, or new WatsonX API keys to disk.
+
+Provider API keys are read from the environment:
+
 ```bash
-changenarator <owner> <repo> <pr_number> <local_repo_path>
-bun run cli init
+export ANTHROPIC_API_KEY="..."
+export OPENAI_API_KEY="..."
+export OPENROUTER_API_KEY="..."
+export WATSONX_API_KEY="..."
+export WATSONX_PROJECT_ID="..."
+export WATSONX_URL="https://us-south.ml.cloud.ibm.com"
 ```
 
-**Run Analysis:**
-```bash
-bun run start <owner> <repo> <pr_number> <local_repo_path>
+Example `config.json`:
+
+```json
+{
+  "github": {
+    "token": "ghp_example"
+  },
+  "notion": {
+    "token": "ntn_example",
+    "parentPageId": "page-id"
+  },
+  "localReposDir": "~/repos",
+  "ai": {
+    "defaultProvider": "claude-code",
+    "providers": {
+      "claude-code": {},
+      "openai": {
+        "model": "gpt-5.6-sol"
+      },
+      "openrouter": {
+        "model": "openai/gpt-5.4-mini"
+      }
+    }
+  }
+}
 ```
 
-**Example:**
+`config.json` is ignored by Git because it still contains the GitHub and Notion credentials.
+
+## Usage
+
+Analyze a PR with the configured default:
+
 ```bash
 changenarator facebook react 12345 ~/repos/react
 ```
 
-**Alternative (Explicit Command):**
+The explicit form is equivalent:
+
 ```bash
 changenarator analyze facebook react 12345 ~/repos/react
-bun run start facebook react 12345 ~/repos/react
 ```
 
-This will:
-1. Fetch PR metadata from GitHub
-2. Checkout the PR's head SHA locally
-3. Run Bob analysis on the code changes
-4. Generate changelogs for 3 audiences (developers, PMs, users)
-5. Publish results to Notion
+Override the provider for one run:
 
-**Get Help:**
 ```bash
-changenarator help
-# or
-changenarator --help
-bun run cli help
+changenarator analyze \
+  --provider openrouter \
+  facebook react 12345 ~/repos/react
 ```
 
-**Check Version:**
+Override both provider and model:
+
 ```bash
-changenarator version
-# or
-changenarator --version
-bun run cli version
+changenarator analyze \
+  --provider anthropic \
+  --model claude-sonnet-5 \
+  facebook react 12345 ~/repos/react
 ```
 
-### Programmatic Usage
+Model overrides outside the tested defaults are passed through on a best-effort basis. The model must support the provider's structured JSON requirements.
 
-Import and use the `fetchPRContext` function in your code:
+## Provider behavior
 
-```typescript
-import { fetchPRContext } from './src/index';
+### Bob CLI
 
-const prContext = await fetchPRContext('facebook', 'react', 12345);
+Install and authenticate Bob, then select `bob`. ChangeNarator invokes Bob non-interactively in ask mode and validates its JSON result.
 
-console.log(prContext);
-// {
-//   repo: "facebook/react",
-//   pr_number: 12345,
-//   pr_title: "Add new feature",
-//   base_sha: "abc123...",
-//   head_sha: "def456...",
-//   commit_messages: ["commit 1", "commit 2"],
-//   files_changed: [...],
-//   stats: { total_files: 3, total_commits: 2 }
-// }
+### Claude Code CLI
+
+Install and authenticate Claude Code, then select `claude-code`. ChangeNarator uses print mode, safe mode, a read-only tool set, no session persistence, and a JSON schema.
+
+### Codex CLI
+
+Install and authenticate Codex, then select `codex`. ChangeNarator uses `codex exec` with an ephemeral session, read-only sandbox, output schema, and a temporary final-message file.
+
+### Anthropic, OpenAI, and OpenRouter
+
+Export the corresponding API-key environment variable. Requests use each provider's structured-output interface and are validated again locally before entering the pipeline.
+
+OpenRouter requests require models that accept the JSON-schema parameters and disable automatic upstream fallback for predictable execution.
+
+### WatsonX
+
+Export `WATSONX_API_KEY`. Set the project ID and region URL in `ai.providers.watsonx` or through `WATSONX_PROJECT_ID` and `WATSONX_URL`.
+
+## Existing configuration migration
+
+An existing configuration without an `ai` section keeps its original behavior:
+
+1. Bob performs change analysis.
+2. WatsonX generates the three audience changelogs.
+
+This is the **legacy pipeline**. Existing `watsonx.apiKey` values remain readable for compatibility, but ChangeNarator warns that `WATSONX_API_KEY` should be used instead.
+
+Run `changenarator init` when you are ready to choose a unified default provider.
+
+## Failure and privacy guarantees
+
+- ChangeNarator never automatically sends data to a different AI provider after a failure.
+- Missing executables, credentials, invalid output, and HTTP failures stop the run with a provider-specific error.
+- API patches are deterministically bounded to 40,000 characters per file and 200,000 characters per PR prompt.
+- AI commands and HTTP requests time out after two minutes.
+- Provider responses are validated against the provider-neutral analysis or changelog shape.
+- The original Git branch is restored after successful and failed pipeline runs.
+
+## Programmatic usage
+
+```ts
+import { runLocalPipeline } from 'changenarrator';
+
+const result = await runLocalPipeline(
+  'facebook',
+  'react',
+  12345,
+  '/repos/react',
+  {
+    provider: 'openai',
+    model: 'gpt-5.6-sol',
+  },
+);
+
+console.log(result.analysis);
+console.log(result.changelog);
+console.log(result.ai);
 ```
 
-## Data Structure
-
-### PRContext Interface
-
-```typescript
-interface PRContext {
-  repo: string;                    // "owner/repo"
-  pr_number: number;               // PR number
-  pr_title: string;                // PR title
-  base_sha: string;                // Base commit SHA
-  head_sha: string;                // Head commit SHA
-  commit_messages: string[];       // All commit messages
-  files_changed: FileChange[];     // Array of changed files
-  stats: {
-    total_files: number;           // Total files changed
-    total_commits: number;         // Total commits in PR
-  };
-}
-```
-
-### FileChange Interface
-
-```typescript
-interface FileChange {
-  filename: string;                           // File path
-  status: 'added' | 'modified' | 'removed' | 'renamed';
-  additions: number;                          // Lines added
-  deletions: number;                          // Lines deleted
-  patch: string | null;                       // Git diff patch
-}
-```
+`PipelineResult.analysis` is the provider-neutral result. `PipelineResult.bobAnalysis` and the `BobAnalysisResult` type remain as deprecated aliases for v1 compatibility.
 
 ## Development
 
-### Available Scripts
-
-- `bun run dev` - Run in watch mode (auto-reload on changes)
-- `bun run start` - Run the application
-## Testing
-
-The project includes a comprehensive test suite using Bun's built-in test runner.
-
-### Running Tests
-
 ```bash
-# Run all tests
+bun install
+bun run typecheck
 bun test
-
-# Run tests in watch mode (auto-rerun on file changes)
-bun test:watch
-
-# Run tests with coverage report
-bun test:coverage
+bun run build:cli
 ```
 
-### Test Structure
-
-```
-src/
-├── github-client.test.ts    # Unit tests for GitHub API client
-├── pr-fetcher.test.ts       # Unit tests for PR fetching logic
-└── index.test.ts            # Integration tests for main function
-```
-
-### Test Coverage
-
-The test suite includes:
-
-- ✅ **GitHubClient Tests** (11 tests)
-  - Constructor validation
-  - PR metadata fetching
-  - Commit message retrieval
-  - Compare diff fetching
-  - Error handling for API failures
-
-- ✅ **PRFetcher Tests** (10 tests)
-  - Data shaping and transformation
-  - Input validation
-  - File status mapping
-  - Error propagation
-  - Edge cases (empty PRs, etc.)
-
-- ✅ **Integration Tests** (5 tests)
-  - Environment variable handling
-  - CLI argument parsing
-  - End-to-end flow validation
-
-### Test Results
-
-```
-26 pass
-0 fail
-47 expect() calls
-```
-
-### Writing New Tests
-
-To add new tests, create a file with `.test.ts` extension:
-
-```typescript
-import { describe, test, expect } from 'bun:test';
-
-describe('My Feature', () => {
-  test('should work correctly', () => {
-    expect(true).toBe(true);
-  });
-});
-```
-
-Bun will automatically discover and run all `*.test.ts` files.
-
-- `bun run build` - Build for production
-- `bun run typecheck` - Check TypeScript types
-
-### Project Structure
-
-```
-src/
-├── index.ts           # CLI entry point and main export
-├── types.ts           # TypeScript type definitions
-├── github-client.ts   # GitHub API wrapper using Octokit
-├── pr-fetcher.ts      # Main PR fetching and data shaping logic
-```
-
-## Error Handling
-
-The script handles various error scenarios:
-
-- ❌ Missing GitHub token
-- ❌ Invalid repository or PR number
-- ❌ PR not found (404)
-- ❌ API rate limits
-- ❌ Network errors
-- ❌ Invalid input parameters
-
-## Examples
-
-### Analyze a PR from a public repository
-
-```bash
-changenarator vercel next.js 50000 ~/repos/nextjs
-```
-
-### Analyze a PR from a private repository
-
-Ensure your GitHub token (configured via `changenarator init`) has `repo` scope:
-
-```bash
-changenarator your-org your-private-repo 123 ~/repos/your-private-repo
-```
-
-### Using npm scripts (for development)
-
-```bash
-bun run start vercel next.js 50000 ~/repos/nextjs
-```
-
-### Use in your own script
-
-```typescript
-import { fetchPRContext } from './src/index';
-import type { PRContext } from './src/types';
-
-async function analyzePR() {
-  try {
-    const context: PRContext = await fetchPRContext('owner', 'repo', 123);
-    
-    // Process the PR context
-    console.log(`Analyzing ${context.stats.total_files} files...`);
-    
-    for (const file of context.files_changed) {
-      console.log(`${file.status}: ${file.filename}`);
-      console.log(`  +${file.additions} -${file.deletions}`);
-    }
-  } catch (error) {
-    console.error('Failed to fetch PR:', error);
-  }
-}
-
-analyzePR();
-```
+The provider conformance tests mock external commands and HTTP interfaces. They do not require live credentials.
 
 ## License
 
-See [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
----
-
-Made with ❤️ by Bob
+Apache-2.0
