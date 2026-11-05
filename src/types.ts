@@ -24,11 +24,24 @@ export interface PRContext {
   };
 }
 
+export const PROVIDER_IDS = [
+  'bob',
+  'watsonx',
+  'claude-code',
+  'codex',
+  'anthropic',
+  'openai',
+  'openrouter',
+] as const;
+
+export type ProviderId = typeof PROVIDER_IDS[number];
+
+export type ProviderContextMode = 'repository' | 'pr-patches';
+
 /**
- * Result from Bob's code change analysis
- * Based on the output schema defined in src/prompts/bob-prompt.md
+ * Provider-neutral structured result from code change analysis.
  */
-export interface BobAnalysisResult {
+export interface ChangeAnalysisResult {
   repo: string;
   pr_number: number;
   pr_title: string;
@@ -41,10 +54,27 @@ export interface BobAnalysisResult {
   files_skipped: string[];
 }
 
+/**
+ * @deprecated Use ChangeAnalysisResult. Retained for v1 compatibility.
+ */
+export type BobAnalysisResult = ChangeAnalysisResult;
+
 export interface ChangelogAudiences {
   devs: string;
   pms: string;
   users: string;
+}
+
+export interface ProviderStageMetadata {
+  provider: ProviderId;
+  model: string | null;
+  contextMode: ProviderContextMode;
+}
+
+export interface AIExecutionMetadata {
+  mode: 'unified' | 'legacy';
+  analysis: ProviderStageMetadata;
+  changelog: ProviderStageMetadata;
 }
 
 export interface NotionPublishResult {

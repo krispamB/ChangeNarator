@@ -132,6 +132,7 @@ Return JSON only.`;
     expect(mockSpawn).toHaveBeenCalledWith('bob', ['-p', '-'], {
       cwd: mockLocalRepoPath,
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 120_000,
     });
   });
 

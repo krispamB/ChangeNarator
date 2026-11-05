@@ -4,7 +4,32 @@
  */
 
 import * as p from '@clack/prompts';
-import { saveConfig, configExists, validateConfig, type Config } from './config';
+import {
+  saveConfig,
+  configExists,
+  validateConfig,
+  type Config,
+  type ProviderConfig,
+} from './config';
+import { PROVIDER_IDS, type ProviderId } from '../types';
+
+const PROVIDER_LABELS: Record<ProviderId, string> = {
+  bob: 'Bob CLI',
+  watsonx: 'IBM WatsonX API',
+  'claude-code': 'Claude Code CLI',
+  codex: 'OpenAI Codex CLI',
+  anthropic: 'Anthropic API',
+  openai: 'OpenAI API',
+  openrouter: 'OpenRouter API',
+};
+
+function cancelIfNeeded<T>(value: T | symbol): T {
+  if (p.isCancel(value)) {
+    p.cancel('Setup cancelled.');
+    process.exit(0);
+  }
+  return value as T;
+}
 
 /**
  * Run the interactive init command
@@ -27,107 +52,106 @@ export async function initCommand(): Promise<void> {
     }
   }
 
-  // Collect configuration using grouped prompts
-  const config = await p.group(
+  const base = await p.group(
     {
-      githubToken: () =>
-        p.password({
-          message: 'GitHub Personal Access Token:',
-          mask: '•',
-          validate: (value) => {
-            if (!value) return 'GitHub token is required';
-            if (value.length < 10) return 'Token seems too short';
-          },
-        }),
-
-      watsonxApiKey: () =>
-        p.password({
-          message: 'IBM WatsonX API Key:',
-          mask: '•',
-          validate: (value) => {
-            if (!value) return 'WatsonX API key is required';
-            if (value.length < 10) return 'API key seems too short';
-          },
-        }),
-
-      watsonxProjectId: () =>
-        p.text({
-          message: 'WatsonX Project ID:',
-          placeholder: 'abc123xyz',
-          validate: (value) => {
-            if (!value) return 'Project ID is required';
-            if (value.length < 5) return 'Project ID seems too short';
-          },
-        }),
-
-      watsonxUrl: () =>
-        p.text({
-          message: 'WatsonX Region URL:',
-          initialValue: 'https://us-south.ml.cloud.ibm.com',
-          placeholder: 'e.g. us-south.ml.cloud.ibm.com',
-          validate: (value) => {
-            if (!value) return 'URL is required';
-            if (!value.startsWith('http://') && !value.startsWith('https://')) {
-              return 'URL must start with http:// or https://';
-            }
-          },
-        }),
-
-      notionToken: () =>
-        p.password({
-          message: 'Notion Integration Token:',
-          mask: '•',
-          validate: (value) => {
-            if (!value) return 'Notion token is required';
-            if (!value.startsWith('ntn_')) {
-              return 'Notion token should start with "ntn_"';
-            }
-          },
-        }),
-
-      notionPageId: () =>
-        p.text({
-          message: 'Notion Parent Page ID:',
-          placeholder: '1234567890abcdef',
-          validate: (value) => {
-            if (!value) return 'Page ID is required';
-            if (value.length < 10) return 'Page ID seems too short';
-          },
-        }),
-
-      localReposDir: () =>
-        p.text({
-          message: 'Local repos directory (where repos will be cloned):',
-          initialValue: '~/repos',
-          placeholder: '~/repos',
-          validate: (value) => {
-            if (!value) return 'Directory path is required';
-          },
-        }),
+      githubToken: () => p.password({
+        message: 'GitHub Personal Access Token:',
+        mask: '•',
+        validate: value => !value ? 'GitHub token is required' : undefined,
+      }),
+      notionToken: () => p.password({
+        message: 'Notion Integration Token:',
+        mask: '•',
+        validate: value => !value ? 'Notion token is required' : undefined,
+      }),
+      notionPageId: () => p.text({
+        message: 'Notion Parent Page ID:',
+        validate: value => !value ? 'Page ID is required' : undefined,
+      }),
+      localReposDir: () => p.text({
+        message: 'Local repos directory:',
+        initialValue: '~/repos',
+        validate: value => !value ? 'Directory path is required' : undefined,
+      }),
     },
     {
       onCancel: () => {
         p.cancel('Setup cancelled.');
         process.exit(0);
       },
-    }
+    },
   );
 
-  // Transform collected data into Config structure
+  const configuredProviders = cancelIfNeeded<ProviderId[]>(
+    await p.multiselect({
+      message: 'Which AI providers should be available?',
+      options: PROVIDER_IDS.map(value => ({
+        value,
+        label: PROVIDER_LABELS[value],
+      })),
+      initialValues: ['claude-code'],
+      required: true,
+    }),
+  );
+
+  const defaultProvider = cancelIfNeeded<ProviderId>(
+    await p.select({
+      message: 'Which provider should be the default?',
+      options: configuredProviders.map(value => ({
+        value,
+        label: PROVIDER_LABELS[value],
+      })),
+    }),
+  );
+
+  const providerSettings: Partial<Record<ProviderId, ProviderConfig>> = {};
+  for (const provider of configuredProviders) {
+    const model = cancelIfNeeded<string>(
+      await p.text({
+        message: `Optional saved model for ${PROVIDER_LABELS[provider]}:`,
+        placeholder: 'Leave blank to use ChangeNarator’s tested default',
+      }),
+    ).trim();
+    providerSettings[provider] = model ? { model } : {};
+  }
+
+  if (configuredProviders.includes('watsonx')) {
+    const projectId = cancelIfNeeded<string>(
+      await p.text({
+        message: 'WatsonX Project ID:',
+        validate: value => !value ? 'Project ID is required' : undefined,
+      }),
+    );
+    const url = cancelIfNeeded<string>(
+      await p.text({
+        message: 'WatsonX Region URL:',
+        initialValue: 'https://us-south.ml.cloud.ibm.com',
+        validate: value =>
+          !value?.startsWith('http://') && !value?.startsWith('https://')
+            ? 'URL must start with http:// or https://'
+            : undefined,
+      }),
+    );
+    providerSettings.watsonx = {
+      ...providerSettings.watsonx,
+      projectId,
+      url,
+    };
+  }
+
   const configData: Config = {
     github: {
-      token: config.githubToken as string,
-    },
-    watsonx: {
-      apiKey: config.watsonxApiKey as string,
-      projectId: config.watsonxProjectId as string,
-      url: config.watsonxUrl as string,
+      token: base.githubToken as string,
     },
     notion: {
-      token: config.notionToken as string,
-      parentPageId: config.notionPageId as string,
+      token: base.notionToken as string,
+      parentPageId: base.notionPageId as string,
     },
-    localReposDir: config.localReposDir as string,
+    localReposDir: base.localReposDir as string,
+    ai: {
+      defaultProvider,
+      providers: providerSettings,
+    },
   };
 
   // Validate the configuration
@@ -154,12 +178,14 @@ export async function initCommand(): Promise<void> {
   // Show success message with next steps
   p.note(
     `Configuration saved to config.json\n\n` +
+    `Default AI provider: ${PROVIDER_LABELS[defaultProvider]}\n` +
+    `API keys are read from environment variables and were not written to disk.\n\n` +
     `Next steps:\n` +
-    `  1. Run your first analysis:\n` +
+    `  1. Export any required provider API key.\n` +
+    `  2. Run your first analysis:\n` +
     `     bun run start <owner> <repo> <pr_number> <local_repo_path>\n\n` +
-    `  2. Example:\n` +
-    `     bun run start facebook react 12345 ${configData.localReposDir}/react\n\n` +
-    `Note: Make sure to add config.json to .gitignore to keep your secrets safe!`,
+    `  3. Override the provider when needed:\n` +
+    `     changenarator analyze --provider openrouter <owner> <repo> <pr_number> <path>`,
     'Setup Complete! 🎉'
   );
 

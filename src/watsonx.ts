@@ -52,11 +52,9 @@ async function generate(
                         ],
                     },
                 ],
-                parameters: {
-                    max_new_tokens: 500,
-                    time_limit: 10000,
-                    temperature: 0.3
-                },
+                max_tokens: 500,
+                time_limit: 10000,
+                temperature: 0.3,
             }),
         }
     );
@@ -106,7 +104,21 @@ Write the changelog section now. Return only the text, no headings, no labels.`;
 }
 
 export async function generateChangelog(analysis: BobAnalysisResult, config: Config): Promise<ChangelogAudiences> {
-    const token = await getIAMToken(config.watsonx.apiKey);
+    const apiKey = process.env.WATSONX_API_KEY || config.watsonx?.apiKey;
+    const projectId = process.env.WATSONX_PROJECT_ID || config.watsonx?.projectId;
+    const watsonxUrl = process.env.WATSONX_URL || config.watsonx?.url;
+
+    if (!apiKey || !projectId || !watsonxUrl) {
+        throw new Error(
+            'Legacy WatsonX generation requires WATSONX_API_KEY, WATSONX_PROJECT_ID, and WATSONX_URL'
+        );
+    }
+
+    if (!process.env.WATSONX_API_KEY && config.watsonx?.apiKey) {
+        console.warn('⚠️  WatsonX API keys in config.json are deprecated; use WATSONX_API_KEY.');
+    }
+
+    const token = await getIAMToken(apiKey);
 
     // Build prompts for all three audiences
     const devsPrompt = buildPrompt(analysis, 'devs');
@@ -115,9 +127,9 @@ export async function generateChangelog(analysis: BobAnalysisResult, config: Con
 
     // run all 3 generations in parallel
     const [devs, pms, users] = await Promise.all([
-        generate(token, devsPrompt.system, devsPrompt.user, config.watsonx.url, config.watsonx.projectId),
-        generate(token, pmsPrompt.system, pmsPrompt.user, config.watsonx.url, config.watsonx.projectId),
-        generate(token, usersPrompt.system, usersPrompt.user, config.watsonx.url, config.watsonx.projectId),
+        generate(token, devsPrompt.system, devsPrompt.user, watsonxUrl, projectId),
+        generate(token, pmsPrompt.system, pmsPrompt.user, watsonxUrl, projectId),
+        generate(token, usersPrompt.system, usersPrompt.user, watsonxUrl, projectId),
     ]);
 
     return { devs, pms, users };

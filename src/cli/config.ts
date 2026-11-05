@@ -7,12 +7,28 @@ import { existsSync } from 'fs';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
+import { PROVIDER_IDS, type ProviderId } from '../types';
+
+export interface ProviderConfig {
+  model?: string;
+  projectId?: string;
+  url?: string;
+}
+
+export interface AIConfig {
+  defaultProvider: ProviderId;
+  providers?: Partial<Record<ProviderId, ProviderConfig>>;
+}
 
 export interface Config {
   github: {
     token: string;
   };
-  watsonx: {
+  /**
+   * Legacy WatsonX configuration. New configurations use ai.providers.watsonx
+   * and WATSONX_API_KEY, but these fields remain readable for compatibility.
+   */
+  watsonx?: {
     apiKey: string;
     projectId: string;
     url: string;
@@ -22,6 +38,7 @@ export interface Config {
     parentPageId: string;
   };
   localReposDir: string;
+  ai?: AIConfig;
 }
 
 /**
@@ -66,6 +83,11 @@ export async function loadConfig(): Promise<Config> {
       
       // Expand paths
       config.localReposDir = expandPath(config.localReposDir);
+
+      const errors = validateConfig(config);
+      if (errors.length > 0) {
+        throw new Error(errors.join('; '));
+      }
       
       return config;
     } catch (error) {
@@ -83,20 +105,26 @@ export async function loadConfig(): Promise<Config> {
   const notionPageId = process.env.NOTION_PARENT_PAGE_ID;
   const localReposDir = process.env.LOCAL_REPOS_DIR || '~/repos';
 
-  if (!githubToken || !watsonxApiKey || !watsonxProjectId || !notionToken || !notionPageId) {
+  // AI credentials are not required here: each provider checks its own
+  // credentials when it runs, so `--provider anthropic` works without WatsonX.
+  if (!githubToken || !notionToken || !notionPageId) {
     throw new Error(
       'Configuration not found. Please run "changenarator init" to set up your configuration, ' +
-      'or set the required environment variables in .env file.'
+      'or set GITHUB_TOKEN, NOTION_TOKEN, and NOTION_PARENT_PAGE_ID in a .env file.'
     );
   }
 
   return {
     github: { token: githubToken },
-    watsonx: {
-      apiKey: watsonxApiKey,
-      projectId: watsonxProjectId,
-      url: watsonxUrl,
-    },
+    ...(watsonxApiKey && watsonxProjectId
+      ? {
+          watsonx: {
+            apiKey: watsonxApiKey,
+            projectId: watsonxProjectId,
+            url: watsonxUrl,
+          },
+        }
+      : {}),
     notion: {
       token: notionToken,
       parentPageId: notionPageId,
@@ -132,18 +160,46 @@ export function validateConfig(config: Partial<Config>): string[] {
     errors.push('GitHub token is required');
   }
 
-  if (!config.watsonx?.apiKey) {
-    errors.push('WatsonX API key is required');
-  }
+  if (config.ai) {
+    if (!PROVIDER_IDS.includes(config.ai.defaultProvider)) {
+      errors.push(`AI default provider must be one of: ${PROVIDER_IDS.join(', ')}`);
+    }
 
-  if (!config.watsonx?.projectId) {
-    errors.push('WatsonX project ID is required');
-  }
+    for (const [provider, settings] of Object.entries(config.ai.providers ?? {})) {
+      if (!PROVIDER_IDS.includes(provider as ProviderId)) {
+        errors.push(`Unknown AI provider: ${provider}`);
+      }
+      if (settings?.model !== undefined && !settings.model.trim()) {
+        errors.push(`Model for ${provider} cannot be empty`);
+      }
+      if (settings?.url && !settings.url.startsWith('http://') && !settings.url.startsWith('https://')) {
+        errors.push(`URL for ${provider} must start with http:// or https://`);
+      }
+    }
 
-  if (!config.watsonx?.url) {
-    errors.push('WatsonX URL is required');
-  } else if (!config.watsonx.url.startsWith('http')) {
-    errors.push('WatsonX URL must start with http:// or https://');
+    if (config.ai.defaultProvider === 'watsonx') {
+      const watsonSettings = config.ai.providers?.watsonx;
+      const projectId = watsonSettings?.projectId || config.watsonx?.projectId || process.env.WATSONX_PROJECT_ID;
+      const url = watsonSettings?.url || config.watsonx?.url || process.env.WATSONX_URL;
+      if (!projectId) errors.push('WatsonX project ID is required');
+      if (!url) errors.push('WatsonX URL is required');
+    }
+  } else {
+    // Same precedence as the legacy generator in src/watsonx.ts: env first, then config.json.
+    const apiKey = process.env.WATSONX_API_KEY || config.watsonx?.apiKey;
+    const projectId = process.env.WATSONX_PROJECT_ID || config.watsonx?.projectId;
+    const url = process.env.WATSONX_URL || config.watsonx?.url;
+    if (!apiKey) {
+      errors.push('WatsonX API key is required for the legacy pipeline (set WATSONX_API_KEY)');
+    }
+    if (!projectId) {
+      errors.push('WatsonX project ID is required for the legacy pipeline');
+    }
+    if (!url) {
+      errors.push('WatsonX URL is required for the legacy pipeline');
+    } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      errors.push('WatsonX URL must start with http:// or https://');
+    }
   }
 
   if (!config.notion?.token) {
